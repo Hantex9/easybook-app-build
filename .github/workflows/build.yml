@@ -161,7 +161,7 @@ jobs:
       #     tar -xzvf build-*.tar.gz -C ./
 
       - name: Take app screenshots
-        if: ${{ env.FORCE_SCREENSHOTS == 'true' }}
+        # if: ${{ env.FORCE_SCREENSHOTS == 'true' }}
         run: npm run generate:ios:screenshots
 
       - name: Build iOS
