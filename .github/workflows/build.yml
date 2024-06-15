@@ -148,10 +148,10 @@ jobs:
       #   if: ${{ env.FORCE_SCREENSHOTS == 'true' }}
       #   run: npm run build:ios:test
 
-      # - name: Decompress detox build artifact
-      #   if: ${{ env.FORCE_SCREENSHOTS == 'true' }}
-      #   run: |
-      #     tar -xzvf build-*.tar.gz -C ./
+      - name: Decompress detox build artifact
+        # if: ${{ env.FORCE_SCREENSHOTS == 'true' }}
+        run: |
+          tar -xzvf build-*.tar.gz -C ./
 
       - name: Take app screenshots
         # if: ${{ env.FORCE_SCREENSHOTS == 'true' }}
