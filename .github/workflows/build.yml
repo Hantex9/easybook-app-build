@@ -90,14 +90,19 @@ jobs:
             echo "jq is already installed"
           fi
 
+
       - name: Install Fastlane from GitHub fork
         run: |
           brew install ruby
-          echo 'export PATH="/opt/homebrew/opt/ruby/bin:$PATH"' >> ~/.bash_profile
-          source ~/.bash_profile
+          echo 'export PATH="/opt/homebrew/opt/ruby/bin:$PATH"' >> $GITHUB_ENV
+          echo 'export GEM_HOME="$HOME/gems"' >> $GITHUB_ENV
+          echo 'export PATH="$HOME/gems/bin:$PATH"' >> $GITHUB_ENV
+          source $GITHUB_ENV
           gem install bundler
-          gem install fastlane --git https://github.com/visuallization/fastlane.git --branch fix/templateName-is-not-an-attribute-on-the-resource-profiles
-
+          echo "source 'https://rubygems.org'" > Gemfile
+          echo "gem 'fastlane', git: 'https://github.com/visuallization/fastlane.git', branch: 'fix/templateName-is-not-an-attribute-on-the-resource-profiles'" >> Gemfile
+          bundle install
+          
       - name: Extract and transform app name from app.json
         id: extract-transform-name
         run: |
