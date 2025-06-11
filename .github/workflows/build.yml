@@ -91,7 +91,7 @@ jobs:
           fi
 
       - name: Install fastlane
-        run: brew install fastlane
+        run: brew install fastlane@228.0
 
       - name: Extract and transform app name from app.json
         id: extract-transform-name
