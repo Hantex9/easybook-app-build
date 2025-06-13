@@ -90,10 +90,11 @@ jobs:
             echo "jq is already installed"
           fi
 
-      - name: Install fastlane
+      - name: Install Fastlane on macOS (user install)
         run: |
-          brew update
-          brew install fastlane
+          echo 'export GEM_HOME=$HOME/.gem' >> $GITHUB_ENV
+          echo 'export PATH=$HOME/.gem/bin:$PATH' >> $GITHUB_ENV
+          gem install --user-install fastlane -NV
 
       - name: Extract and transform app name from app.json
         id: extract-transform-name
