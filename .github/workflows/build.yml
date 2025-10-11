@@ -113,7 +113,7 @@ jobs:
 
       - name: Determine if screenshots should be forced
         run: |
-          if [[ "${{ github.event.inputs.forceScreenshots }}" == "true"; then
+          if [[ "${{ github.event.inputs.forceScreenshots }}" == "true" || "${{ env.APP_VERSION }}" == "1.0.0" ]]; then
             echo "FORCE_SCREENSHOTS=true" >> $GITHUB_ENV
           else
             echo "FORCE_SCREENSHOTS=false" >> $GITHUB_ENV
@@ -269,7 +269,7 @@ jobs:
 
       - name: Determine if screenshots should be forced
         run: |
-          if [[ "${{ github.event.inputs.forceScreenshots }}" == "true"; then
+          if [[ "${{ github.event.inputs.forceScreenshots }}" == "true"  || "${{ env.APP_VERSION }}" == "1.0.0" ]]; then
             echo "FORCE_SCREENSHOTS=true" >> $GITHUB_ENV
           else
             echo "FORCE_SCREENSHOTS=false" >> $GITHUB_ENV
