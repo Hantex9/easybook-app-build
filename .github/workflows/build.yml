@@ -100,7 +100,7 @@ jobs:
         id: extract-transform-name
         run: |
           NAME=$(jq -r '.expo.name' app.json)
-          BUNDLE_TARGET=$(echo $NAME | tr -d " .'&-" )
+          BUNDLE_TARGET=$(echo "$NAME" | sed "s/’//g" | tr -d " .'&-")
           BUNDLE_ID=$(jq -r '.expo.ios.bundleIdentifier' app.json)
           EXTENSION_BUNDLE_ID="${BUNDLE_ID}.OneSignalNotificationServiceExtension"
           APP_VERSION=$(jq -r '.expo.version' app.json)
