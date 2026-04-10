@@ -317,5 +317,6 @@ jobs:
         run: npm run start
         working-directory: easybook-release-automation-android
         env:
+          APP_PACKAGE_NAME: ${{ env.GOOGLE_PLAY_EMAIL }}
           GOOGLE_PLAY_EMAIL: ${{ env.GOOGLE_PLAY_EMAIL }}
           GOOGLE_PLAY_PASSWORD: ${{ env.GOOGLE_PLAY_PASSWORD }}
