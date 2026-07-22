@@ -263,6 +263,24 @@ jobs:
           ref: ${{ steps.release_context.outputs.source_sha }}
           path: source
 
+      - name: Extract app information
+        working-directory: source
+        run: |
+          APP_NAME=$(jq -r '.expo.name // empty' app.json)
+          APP_VERSION=$(jq -r '.expo.version // empty' app.json)
+          BUNDLE_ID=$(jq -r '.expo.ios.bundleIdentifier // empty' app.json)
+          EXTENSION_BUNDLE_ID="${BUNDLE_ID}.OneSignalNotificationServiceExtension"
+
+          if [[ -z "$APP_NAME" || -z "$APP_VERSION" || -z "$BUNDLE_ID" ]]; then
+            echo "Missing APP_NAME, APP_VERSION or BUNDLE_ID in source/app.json"
+            exit 1
+          fi
+
+          echo "APP_NAME=$APP_NAME" >> "$GITHUB_ENV"
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
+          echo "BUNDLE_ID=$BUNDLE_ID" >> "$GITHUB_ENV"
+          echo "EXTENSION_BUNDLE_ID=$EXTENSION_BUNDLE_ID" >> "$GITHUB_ENV"
+
       - name: Restore IPA into the project
         run: cp release-artifact/app.ipa source/app.ipa
 
@@ -347,9 +365,16 @@ jobs:
 
       - name: Extract app information
         run: |
-          ANDROID_PACKAGE=$(jq -r '.expo.android.package' app.json)
-          APP_VERSION=$(jq -r '.expo.version' app.json)
+          APP_NAME=$(jq -r '.expo.name // empty' app.json)
+          ANDROID_PACKAGE=$(jq -r '.expo.android.package // empty' app.json)
+          APP_VERSION=$(jq -r '.expo.version // empty' app.json)
 
+          if [[ -z "$APP_NAME" || -z "$ANDROID_PACKAGE" || -z "$APP_VERSION" ]]; then
+            echo "Missing APP_NAME, ANDROID_PACKAGE or APP_VERSION in app.json"
+            exit 1
+          fi
+
+          echo "APP_NAME=$APP_NAME" >> "$GITHUB_ENV"
           echo "ANDROID_PACKAGE=$ANDROID_PACKAGE" >> "$GITHUB_ENV"
           echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
 
@@ -387,12 +412,14 @@ jobs:
 
           jq -n \
             --arg source_sha "$SOURCE_SHA" \
+            --arg app_name "$APP_NAME" \
             --arg app_version "$APP_VERSION" \
             --arg force_screenshots "$FORCE_SCREENSHOTS" \
             --arg use_lorenzo "$USE_LORENZO" \
             --arg android_package "$ANDROID_PACKAGE" \
             '{
               source_sha: $source_sha,
+              app_name: $app_name,
               app_version: $app_version,
               force_screenshots: $force_screenshots,
               use_lorenzo: $use_lorenzo,
@@ -433,6 +460,7 @@ jobs:
 
           values = {
               "SOURCE_SHA": context["source_sha"],
+              "APP_NAME": context.get("app_name", ""),
               "APP_VERSION": context["app_version"],
               "FORCE_SCREENSHOTS": context["force_screenshots"],
               "USE_LORENZO": context["use_lorenzo"],
@@ -458,6 +486,24 @@ jobs:
           token: ${{ secrets.EASYBOOK_RELEASE_AUTOMATION_REPO_TOKEN }}
           ref: ${{ steps.release_context.outputs.source_sha }}
           path: source
+
+      - name: Extract app information
+        working-directory: source
+        run: |
+          APP_NAME=$(jq -r '.expo.name // empty' app.json)
+          APP_VERSION=$(jq -r '.expo.version // empty' app.json)
+          ANDROID_PACKAGE=$(jq -r '.expo.android.package // empty' app.json)
+
+          if [[ -z "$APP_NAME" || -z "$APP_VERSION" || -z "$ANDROID_PACKAGE" ]]; then
+            echo "Missing APP_NAME, APP_VERSION or ANDROID_PACKAGE in source/app.json"
+            exit 1
+          fi
+
+          echo "APP_NAME=$APP_NAME" >> "$GITHUB_ENV"
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
+          echo "ANDROID_PACKAGE=$ANDROID_PACKAGE" >> "$GITHUB_ENV"
+          echo "APP_PACKAGE_NAME=$ANDROID_PACKAGE" >> "$GITHUB_ENV"
+          echo "ANDROID_PACKAGE_NAME=$ANDROID_PACKAGE" >> "$GITHUB_ENV"
 
       - name: Restore AAB into the project
         run: cp release-artifact/app.aab source/app.aab
@@ -495,7 +541,6 @@ jobs:
         if: steps.release_context.outputs.app_version != '1.0.0'
         working-directory: source
         env:
-          ANDROID_PACKAGE_NAME: ${{ env.ANDROID_PACKAGE }}
           GOOGLE_PLAY_JSON_KEY: google_play_json_key.json
         run: fastlane upload_aab_to_play_store
 
@@ -518,11 +563,21 @@ jobs:
         run: npm install
         working-directory: source/easybook-release-automation-android
 
+      - name: Verify Easybook Automation environment
+        if: steps.release_context.outputs.app_version == '1.0.0'
+        run: |
+          : "${APP_NAME:?APP_NAME environment variable is required}"
+          : "${APP_VERSION:?APP_VERSION environment variable is required}"
+          : "${APP_PACKAGE_NAME:?APP_PACKAGE_NAME environment variable is required}"
+          : "${ANDROID_PACKAGE_NAME:?ANDROID_PACKAGE_NAME environment variable is required}"
+          : "${GOOGLE_PLAY_EMAIL:?GOOGLE_PLAY_EMAIL environment variable is required}"
+          : "${GOOGLE_PLAY_PASSWORD:?GOOGLE_PLAY_PASSWORD environment variable is required}"
+
+          echo "App name: $APP_NAME"
+          echo "App version: $APP_VERSION"
+          echo "Package: $APP_PACKAGE_NAME"
+
       - name: Create the app on the Play Store with Easybook Automation
         if: steps.release_context.outputs.app_version == '1.0.0'
         run: npm run start
         working-directory: source/easybook-release-automation-android
-        env:
-          APP_PACKAGE_NAME: ${{ env.ANDROID_PACKAGE }}
-          GOOGLE_PLAY_EMAIL: ${{ env.GOOGLE_PLAY_EMAIL }}
-          GOOGLE_PLAY_PASSWORD: ${{ env.GOOGLE_PLAY_PASSWORD }}
