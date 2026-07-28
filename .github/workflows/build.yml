@@ -100,11 +100,22 @@ jobs:
           APP_VERSION=$(jq -r '.expo.version' app.json)
           APP_NAME=$(jq -r '.expo.name' app.json)
 
+          if jq -e '
+            (.expo.plugins // [])
+            | map(if type == "array" then .[0] else . end)
+            | index("onesignal-expo-plugin") != null
+          ' app.json >/dev/null; then
+            HAS_ONESIGNAL_EXTENSION=true
+          else
+            HAS_ONESIGNAL_EXTENSION=false
+          fi
+
           echo "BUNDLE_TARGET=$BUNDLE_TARGET" >> "$GITHUB_ENV"
           echo "BUNDLE_ID=$BUNDLE_ID" >> "$GITHUB_ENV"
           echo "EXTENSION_BUNDLE_ID=$EXTENSION_BUNDLE_ID" >> "$GITHUB_ENV"
           echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
           echo "APP_NAME=$APP_NAME" >> "$GITHUB_ENV"
+          echo "HAS_ONESIGNAL_EXTENSION=$HAS_ONESIGNAL_EXTENSION" >> "$GITHUB_ENV"
 
       - name: Determine if screenshots should be forced
         run: |
@@ -158,24 +169,54 @@ jobs:
 
       - name: Create credentials.json
         run: |
-          echo '{
-            "ios": {
-              "OneSignalNotificationServiceExtension": {
-                "distributionCertificate": {
-                  "path": "certificate.p12",
-                  "password": "'$CERT_P12_PASSWORD'"
-                },
-                "provisioningProfilePath": "provisioning_profile_onesignal.mobileprovision"
-              },
-              "'$BUNDLE_TARGET'": {
-                "distributionCertificate": {
-                  "path": "certificate.p12",
-                  "password": "'$CERT_P12_PASSWORD'"
-                },
-                "provisioningProfilePath": "provisioning_profile.mobileprovision"
-              }
-            }
-          }' > credentials.json
+          if [[ ! -f "provisioning_profile.mobileprovision" ]]; then
+            echo "Missing provisioning profile for the main iOS target."
+            exit 1
+          fi
+
+          if [[ "$HAS_ONESIGNAL_EXTENSION" == "true" ]]; then
+            if [[ ! -f "provisioning_profile_onesignal.mobileprovision" ]]; then
+              echo "The app uses the OneSignal extension, but its provisioning profile is missing."
+              exit 1
+            fi
+
+            jq -n \
+              --arg target "$BUNDLE_TARGET" \
+              --arg password "$CERT_P12_PASSWORD" \
+              '{
+                ios: {
+                  "OneSignalNotificationServiceExtension": {
+                    distributionCertificate: {
+                      path: "certificate.p12",
+                      password: $password
+                    },
+                    provisioningProfilePath: "provisioning_profile_onesignal.mobileprovision"
+                  },
+                  ($target): {
+                    distributionCertificate: {
+                      path: "certificate.p12",
+                      password: $password
+                    },
+                    provisioningProfilePath: "provisioning_profile.mobileprovision"
+                  }
+                }
+              }' > credentials.json
+          else
+            jq -n \
+              --arg target "$BUNDLE_TARGET" \
+              --arg password "$CERT_P12_PASSWORD" \
+              '{
+                ios: {
+                  ($target): {
+                    distributionCertificate: {
+                      path: "certificate.p12",
+                      password: $password
+                    },
+                    provisioningProfilePath: "provisioning_profile.mobileprovision"
+                  }
+                }
+              }' > credentials.json
+          fi
 
       - name: Build iOS
         env:
