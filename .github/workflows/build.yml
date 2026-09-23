@@ -77,6 +77,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Verify native push configuration
+        run: npm run verify:push
+
       - name: Install jq
         run: |
           if ! command -v jq >/dev/null 2>&1; then
@@ -167,6 +170,22 @@ jobs:
           AUTH_KEY_PATH: "fastlane/AuthKey.p8"
         run: fastlane create_app
 
+      - name: Verify APNs provisioning profile
+        run: |
+          security cms -D -i provisioning_profile.mobileprovision > provisioning_profile.plist
+          PROFILE_BUNDLE_ID=$(plutil -extract Entitlements.application-identifier raw provisioning_profile.plist)
+          PROFILE_PUSH_ENV=$(plutil -extract Entitlements.aps-environment raw provisioning_profile.plist)
+
+          if [[ "$PROFILE_BUNDLE_ID" != *".$BUNDLE_ID" ]]; then
+            echo "Provisioning profile belongs to $PROFILE_BUNDLE_ID instead of $BUNDLE_ID."
+            exit 1
+          fi
+
+          if [[ "$PROFILE_PUSH_ENV" != "production" ]]; then
+            echo "Provisioning profile has no production APNs entitlement. Found: $PROFILE_PUSH_ENV"
+            exit 1
+          fi
+
       - name: Create credentials.json
         run: |
           if [[ ! -f "provisioning_profile.mobileprovision" ]]; then
@@ -232,6 +251,23 @@ jobs:
 
           if [[ -z "$IPA_PATH" ]]; then
             echo "No .ipa file found after the build."
+            exit 1
+          fi
+
+          IPA_CHECK_DIR="$RUNNER_TEMP/ios-push-check"
+          mkdir -p "$IPA_CHECK_DIR"
+          unzip -q "$IPA_PATH" -d "$IPA_CHECK_DIR"
+          APP_PATH="$(find "$IPA_CHECK_DIR/Payload" -maxdepth 1 -type d -name '*.app' -print -quit)"
+
+          if [[ -z "$APP_PATH" ]]; then
+            echo "No application bundle found inside the IPA."
+            exit 1
+          fi
+
+          codesign -d --entitlements :- "$APP_PATH" > "$IPA_CHECK_DIR/app-entitlements.plist" 2>/dev/null
+          APP_PUSH_ENV=$(plutil -extract aps-environment raw "$IPA_CHECK_DIR/app-entitlements.plist")
+          if [[ "$APP_PUSH_ENV" != "production" ]]; then
+            echo "Built IPA has no production APNs entitlement. Found: $APP_PUSH_ENV"
             exit 1
           fi
 
@@ -435,6 +471,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Verify native push configuration
+        run: npm run verify:push
 
       - name: Build Android
         run: npm run build:android
