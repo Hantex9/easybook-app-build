@@ -15,6 +15,10 @@ on:
           - "true"
           - "false"
 
+# Keep release tooling independent of legacy Node pins in shop branches.
+env:
+  NODE_VERSION: "22"
+
 jobs:
   build_ios:
     name: Build iOS
@@ -60,7 +64,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version-file: ".node-version"
+          node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
       - name: Setup EAS
@@ -431,7 +435,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version-file: ".node-version"
+          node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
       - name: Setup EAS
@@ -628,7 +632,7 @@ jobs:
         if: steps.release_context.outputs.app_version == '1.0.0'
         uses: actions/setup-node@v6
         with:
-          node-version-file: "source/.node-version"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Checkout Easybook Automation Repository
         if: steps.release_context.outputs.app_version == '1.0.0'
