@@ -344,6 +344,29 @@ jobs:
           ref: ${{ steps.release_context.outputs.source_sha }}
           path: source
 
+      - name: Prepare App Store age rating
+        working-directory: source
+        run: |
+          set -euo pipefail
+          RATING_CONFIG="fastlane/metadata/ios_rating_config.json"
+          PREPARED_RATING=$(mktemp)
+          trap 'rm -f "$PREPARED_RATING"' EXIT
+
+          # Standard Easybook apps have no built-in social feed. Preserve any
+          # explicit declarations from customized shop branches.
+          jq -e '
+            if type != "object" then
+              error("The age rating configuration must be a JSON object")
+            else . end
+            | {socialMedia: false, socialMediaAgeRestricted: false} + .
+            | if (.socialMedia | type) != "boolean"
+                or (.socialMediaAgeRestricted | type) != "boolean" then
+                error("socialMedia and socialMediaAgeRestricted must be JSON booleans")
+              else . end
+          ' "$RATING_CONFIG" > "$PREPARED_RATING"
+          mv "$PREPARED_RATING" "$RATING_CONFIG"
+          jq '{socialMedia, socialMediaAgeRestricted}' "$RATING_CONFIG"
+
       - name: Extract app information
         working-directory: source
         run: |
